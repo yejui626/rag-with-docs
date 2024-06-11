@@ -1,0 +1,67 @@
+variables:
+  service_connection: 'dssandbox-spn'
+  resource_group: 'PTAZSG-DEV-DSP-RG'
+  app_name: 'ptsg-5dspwb04'
+  slot_name: 'dstats3'
+  group: resume_parser_hr_env_1
+
+pool:
+  vmImage: ubuntu-latest
+
+
+## No code trigger (events )
+trigger:
+  branches:
+    include:
+    - resume_parser
+
+## Pipeline steps
+steps:
+  - task: UsePythonVersion@0
+    displayName: "Setting Python version to 3.8 as required by functions"
+    inputs:
+      versionSpec: '3.8.16'
+      architecture: 'x64'
+
+  # Step 1, Make a venv, activate, install requirements.
+  - script: |
+      python3.8 -m venv antenv
+      source antenv/bin/activate
+      python3.8 -m pip install --upgrade pip setuptools wheel
+      pip install -r requirements.txt
+      echo "PRINTING THIS: $(System.DefaultWorkingDirectory)"
+      echo "Requirements done"
+    workingDirectory: "$(System.DefaultWorkingDirectory)"
+    displayName: "Install requirements"
+
+   # Step 2, create zip file be deployed
+  - task: ArchiveFiles@2
+    displayName: "Archive files"
+    inputs:
+      rootFolderOrFile: "$(System.DefaultWorkingDirectory)"
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+      replaceExistingArchive: true
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+      artifactName: 'drop'
+
+  # Step 3, deploy zip package to azure app service
+  - task: AzureRmWebAppDeployment@4
+    inputs:
+      ConnectionType: 'AzureRM'
+      azureSubscription: $(service_connection)
+      appType: 'webAppLinux'
+      WebAppName: $(app_name)
+      deployToSlotOrASE: true
+      ResourceGroupName: $(resource_group)
+      SlotName: $(slot_name)
+      packageForLinux: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+      RuntimeStack: 'PYTHON|3.8'
+      DeploymentType: 'zipDeploy'
+      StartupCommand: 'python -m streamlit run streamlit_app.py --server.port 8000 --server.address 0.0.0.0 --server.enableXsrfProtection=false --server.enableCORS=false'
+      appSettings: '-Port 8080 -RequestTimeout "10:20:00" -WEBSITE_TIME_ZONE "Singapore Standard Time" -WEBSITES_PORT 8080 -WEBSITES_ENABLE_APP_SERVICE_STORAGE true -SCM_DO_BUILD_DURING_DEPLOYMENT true -ENABLE_ORYX_BUILD true -WEBSITE_RUN_FROM_PACKAGE true -API_KEY $(API_KEY)'
+      timeoutInMinutes: 60 # Set the timeout to 60 minutes
