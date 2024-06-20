@@ -124,6 +124,9 @@ with st.sidebar:
                             
                             if file_type == "application/pdf":
                                 pdf_loader(db=db,file_path=file_path)
+
+                            elif file_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                                pass
                                 
                     else:
                         print("FAILED")
