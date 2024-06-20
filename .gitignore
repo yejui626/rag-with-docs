@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 
 #ipynb files
-*.ipynb
+# *.ipynb
 /.streamlit
 
 #uploaded_folder
