@@ -23,12 +23,6 @@ embedding_function = AzureOpenAIEmbeddings(
                     )
 
 def change_folder(folder):
-    embedding_function = AzureOpenAIEmbeddings(
-                    deployment = "ada002",
-                    model="text-embedding-ada-002",
-                    azure_endpoint=st.secrets['OPENAI_API_ENDPOINT'],
-                    openai_api_version = "2023-07-01-preview"
-                    )
     with st.spinner("Thinking..."):
         print("Folder name:",folder)
         db = Chroma(collection_name=folder,
@@ -124,9 +118,6 @@ with st.sidebar:
                             
                             if file_type == "application/pdf":
                                 pdf_loader(db=db,file_path=file_path)
-
-                            elif file_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                                pass
                                 
                     else:
                         print("FAILED")
