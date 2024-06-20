@@ -7,7 +7,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 import streamlit as st
 from langchain_community.vectorstores.chroma import Chroma
 from langchain_openai import AzureOpenAIEmbeddings
-from chat import Chat
 
 DEFAULT_DOCUMENT_PROMPT = PromptTemplate.from_template(template="{page_content}")
 
@@ -31,22 +30,7 @@ def pdf_loader(db,file_path):
     db.add_documents(documents=all_splits)
     
     
-def change_folder(folder):
-    embedding_function = AzureOpenAIEmbeddings(
-                    deployment = "ada002",
-                    model="text-embedding-ada-002",
-                    azure_endpoint=st.secrets['OPENAI_API_ENDPOINT'],
-                    openai_api_version = "2023-07-01-preview"
-                    )
-    with st.spinner("Thinking..."):
-        print("Folder name:",folder)
-        db = Chroma(collection_name=folder,
-                    persist_directory=f"directories/{folder}",
-                    embedding_function=embedding_function
-                    )
-        index = Chat(db)
-        print(index)
-        st.session_state.chat_engine = index
+
 
 # Define the on_change function
 def on_files_uploaded():
