@@ -1,18 +1,23 @@
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI
 from langchain.agents.agent_types import AgentType
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
-from langchain_openai import ChatOpenAI
 import pandas as pd
 import os
 from langchain_core.prompts import format_document
 from langchain.memory import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
+import streamlit as st
 
 class StructuredChat:
     def __init__(self, sav_dir:str, batch_token:str):
         self.sav_dir = sav_dir
         self.batch_token = batch_token
-        self.llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
+        self.llm = AzureChatOpenAI(
+            deployment_name = "gpt-35-turbo-16k",
+            azure_endpoint=st.secrets['OPENAI_API_ENDPOINT'],
+            openai_api_type="azure",
+            openai_api_version = "2023-07-01-preview"
+        )
         self.memory = ChatMessageHistory(session_id="test-session")
         self.df = pd.read_excel(
             os.path.join(self.sav_dir, 'post_criteria_evaluation.xlsx')

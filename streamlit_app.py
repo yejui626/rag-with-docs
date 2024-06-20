@@ -5,7 +5,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores.chroma import Chroma
 from langchain_openai import AzureOpenAIEmbeddings
 from chat import Chat
+from utils import pdf_loader,change_folder,on_files_uploaded
 
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = f"rag-with-docs"
+os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ["LANGCHAIN_API_KEY"] = st.secrets['LANGCHAIN_API_KEY']
 
 st.title("title bar : Chat with docs")
 st.info("Info bar", icon="📃")
@@ -16,18 +22,13 @@ embedding_function = AzureOpenAIEmbeddings(
                     openai_api_version = "2023-07-01-preview"
                     )
 
+        
+# Initialize session state variables
+if 'uploaded_files' not in st.session_state:
+    st.session_state.uploaded_files = []
+if 'file_descriptions' not in st.session_state:
+    st.session_state.file_descriptions = []
 
-def change_folder(folder):
-    with st.spinner("Thinking..."):
-        chroma_directory= os.path.join(os.getcwd(),f"directories/{folder}") # Change to your own file directory
-        print("Folder name:",folder)
-        db = Chroma(collection_name=folder,
-                    persist_directory=chroma_directory, 
-                    embedding_function=embedding_function
-                    )
-        index = Chat(db)
-        print(index)
-        st.session_state.chat_engine = index
 
 with st.sidebar:
     st.subheader('Document Chatbot!')
@@ -51,15 +52,18 @@ with st.sidebar:
             change_folder(selected_directory)
 
     st.divider()
+    uploaded_files = st.file_uploader(
+        "Upload your PDF/XLSX documents here",
+        type=['pdf', 'xlsx'],
+        accept_multiple_files=True,
+        on_change=on_files_uploaded,
+        key='file_uploader'
+    )
     with st.form("my_form",clear_on_submit=True):
         # Create a directory if it doesn't exist
-        save_dir = "uploaded_files"
-        os.makedirs(save_dir, exist_ok=True)
-        uploaded_files = st.file_uploader(
-            "Upload your PDF documents here",
-            type=['pdf'],  #Only Allowing PDF for now
-            accept_multiple_files=True
-        )
+        root_dir = "uploaded_files"
+        os.makedirs(root_dir, exist_ok=True)
+        # File uploader with on_change event
         folder_path = st.text_input(
             label=":rainbow[Folder Name]", 
             value="", 
@@ -67,13 +71,16 @@ with st.sidebar:
             placeholder="Insert your folder name here", 
             label_visibility="visible"
         )
-        # folder_description = st.text_input(
-        #     label=":rainbow[Folder Description]", 
-        #     value="", 
-        #     on_change=None, 
-        #     placeholder="Describe your documents", 
-        #     label_visibility="visible"
-        # )
+        # Generate description inputs based on uploaded files
+        if st.session_state.uploaded_files:
+            st.subheader("Describe your documents")
+            for i, file in enumerate(st.session_state.uploaded_files):
+                description = st.text_input(
+                    label=f"Description for {file.name}", 
+                    value=st.session_state.file_descriptions[i], 
+                    key=f"file_description_{i}"
+                )
+                st.session_state.file_descriptions[i] = description
 
         # Every form must have a submit button.
         submitted = st.form_submit_button("Submit")
@@ -83,29 +90,25 @@ with st.sidebar:
                 with st.spinner("Thinking..."):
                     # Check if files are uploaded
                     if uploaded_files is not None:
-                        chroma_directory=os.path.join(os.getcwd(),f"directories/{folder_path}") # Change to your own file directory
+                        os.makedirs(f"{root_dir}/{folder_path}", exist_ok=True)
                         db = Chroma(collection_name=folder_path,
-                                    persist_directory=chroma_directory, 
+                                    persist_directory=f"directories/{folder_path}", 
                                     embedding_function=embedding_function
                                     )
                         for uploaded_file in uploaded_files:
                             bytes_data = uploaded_file.read()
                             file_name = uploaded_file.name
-                            file_path = os.path.join(save_dir, file_name)
+                            file_type = uploaded_file.type
+                            print(file_type)
+                            file_path = os.path.join(root_dir, f"{folder_path}/{file_name}")
                             
                             # Write the contents of the file to a new file
                             with open(file_path, "wb") as f:
                                 f.write(bytes_data)
                             
-                            loader = PyPDFLoader(file_path)
-                            documents = loader.load()
-
-                            text_splitter = RecursiveCharacterTextSplitter(
-                                chunk_size=10000, chunk_overlap=100, add_start_index=True
-                            )
-                            all_splits = text_splitter.split_documents(documents)
-
-                            db.add_documents(documents=all_splits)
+                            if file_type == "application/pdf":
+                                pdf_loader(db=db,file_path=file_path)
+                                
                     else:
                         print("FAILED")
 
@@ -123,11 +126,7 @@ if "messages" not in st.session_state.keys(): # Initialize the chat messages his
     ]
 
 if "chat_engine" not in st.session_state.keys(): # Initialize the chat engine
-    default_directory=os.path.join(os.getcwd(),"directories/default") # Change to your own file directory
-    print(default_directory)
-    db = Chroma(collection_name="default",persist_directory=default_directory, 
-                embedding_function=embedding_function
-                )
+    db = Chroma(collection_name="default", embedding_function=embedding_function, persist_directory="directories/default")
     index = Chat(db)
     st.session_state.chat_engine = index
 
