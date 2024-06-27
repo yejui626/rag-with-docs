@@ -10,20 +10,20 @@ from utils import pdf_loader,on_files_uploaded
 from initialize_agent import initialize_agent
 
 
-st.title("title bar : Chat with docs")
-st.info("Info bar", icon="📃")
+st.title("title bar : Name of Use Case")
+st.info("Information to your use case", icon="📃")
 embedding_function = AzureOpenAIEmbeddings(
-                    deployment = "ada002",
-                    model="text-embedding-ada-002",
+                    deployment = st.secrets['OPENAI_API_EMBEDDINGS_DEPLOYMENT'],
+                    model=st.secrets['OPENAI_API_EMBEDDINGS_MODEL'],
                     azure_endpoint=st.secrets['OPENAI_API_ENDPOINT'],
-                    openai_api_version = "2023-07-01-preview"
+                    openai_api_version = st.secrets['OPENAI_API_VERSION']
                     )
 
 llm = AzureChatOpenAI( # added bc llm needs to be passed to initialize_agent
-            deployment_name="gpt-35-turbo-16k",
+            deployment_name=st.secrets['OPENAI_API_DEPLOYMENT'],
             azure_endpoint=st.secrets['OPENAI_API_ENDPOINT'],
             openai_api_type="azure",
-            openai_api_version="2023-07-01-preview"
+            openai_api_version = st.secrets['OPENAI_API_VERSION']
         )
 
 def change_folder(folder):
