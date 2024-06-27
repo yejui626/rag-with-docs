@@ -1,11 +1,13 @@
+import pandas as pd
 import streamlit as st
 import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores.chroma import Chroma
-from langchain_openai import AzureOpenAIEmbeddings
+from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from chat import Chat
 from utils import pdf_loader,on_files_uploaded
+from initialize_agent import initialize_agent
 
 
 st.title("title bar : Chat with docs")
@@ -17,6 +19,13 @@ embedding_function = AzureOpenAIEmbeddings(
                     openai_api_version = "2023-07-01-preview"
                     )
 
+llm = AzureChatOpenAI( # added bc llm needs to be passed to initialize_agent
+            deployment_name="gpt-35-turbo-16k",
+            azure_endpoint=st.secrets['OPENAI_API_ENDPOINT'],
+            openai_api_type="azure",
+            openai_api_version="2023-07-01-preview"
+        )
+
 def change_folder(folder):
     with st.spinner("Thinking..."):
         print("Folder name:",folder)
@@ -24,15 +33,15 @@ def change_folder(folder):
                     persist_directory=f"directories/{folder}",
                     embedding_function=embedding_function
                     )
-        index = Chat(db)
-        print(index)
-        st.session_state.chat_engine = index
+        st.session_state.chat_engine = initialize_agent(llm, db)
         
 # Initialize session state variables
 if 'uploaded_files' not in st.session_state:
     st.session_state.uploaded_files = []
 if 'file_descriptions' not in st.session_state:
     st.session_state.file_descriptions = []
+if 'batch_token' not in st.session_state: # to handle error in initialize_agent
+    st.session_state.batch_token = "your_default_batch_token"
 
 
 with st.sidebar:
@@ -100,6 +109,15 @@ with st.sidebar:
                                     persist_directory=f"directories/{folder_path}", 
                                     embedding_function=embedding_function
                                     )
+                        
+                        # Save all file descriptions as .csv
+                        descriptions_df = pd.DataFrame({
+                            "file_name": [file.name for file in uploaded_files],
+                            "description": st.session_state.file_descriptions
+                        })
+                        descriptions_df.to_csv(f"{root_dir}/{folder_path}/file_descriptions.csv", index=False)
+                        st.success("File descriptions saved successfully!")
+                        
                         for uploaded_file in uploaded_files:
                             bytes_data = uploaded_file.read()
                             file_name = uploaded_file.name
@@ -112,7 +130,7 @@ with st.sidebar:
                                 f.write(bytes_data)
                             
                             if file_type == "application/pdf":
-                                pdf_loader(db=db,file_path=file_path)
+                                pdf_loader(db=db,file_path=file_path)                            
                                 
                     else:
                         print("FAILED")
@@ -132,8 +150,7 @@ if "messages" not in st.session_state.keys(): # Initialize the chat messages his
 
 if "chat_engine" not in st.session_state.keys(): # Initialize the chat engine
     db = Chroma(collection_name="default", embedding_function=embedding_function, persist_directory="directories/default")
-    index = Chat(db)
-    st.session_state.chat_engine = index
+    st.session_state.chat_engine = initialize_agent(llm, db)
 
 if prompt := st.chat_input("Your question"): # Prompt for user input and save to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -150,5 +167,4 @@ if st.session_state.messages[-1]["role"] != "assistant":
             st.write(response)
             message = {"role": "assistant", "content": response}
             st.session_state.messages.append(message) # Add response to message history
-
 
