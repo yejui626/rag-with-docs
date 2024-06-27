@@ -39,7 +39,7 @@ class StructuredChat:
             history_messages_key="message_history",
         )
 
-    def run(self, user_question):
+    def chat(self, user_question):
         try:
             result = self.agent_with_chat_history.invoke(
                 {"input": user_question},
