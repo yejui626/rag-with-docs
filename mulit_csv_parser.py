@@ -45,13 +45,13 @@ tool = PythonAstREPLTool(locals=dataframes)
 llm_with_tool = llm.bind_tools(tools=[tool], tool_choice=tool.name)
 
 # Define system prompt
-system_prompt = f"""You have access to multiple pandas dataframes. 
+system_prompt = f"""You have access to a number of pandas dataframes. \
 Here is a sample of rows from each dataframe and the python code that was used to generate the sample:
 
 {df_context}
 
-Given a user question about the dataframes, write the Python code to answer it. 
-Don't assume you have access to any libraries other than built-in Python ones and pandas. 
+Given a user question about the dataframes, write the Python code to answer it. \
+Don't assume you have access to any libraries other than built-in Python ones and pandas. \
 Make sure to refer only to the variables mentioned above."""
 
 # Define chat prompt template
@@ -82,8 +82,12 @@ user_question = st.text_input("Ask a question about the dataframes:")
 
 if user_question:
     result = chain.invoke({"question": user_question})
-    st.write("Python Code:")
-    st.code(result['tool_output'], language='python')
-    st.write("Chatbot Response:")
-    st.write(result['response'])
-
+    st.write("Debugging Result:")
+    st.write(result)  # This will help us see the structure of `result`
+    
+    if isinstance(result, dict) and 'response' in result:
+        st.write("Chatbot Response:")
+        st.write(result['response'])
+    else:
+        st.write("Unexpected result format. Here is the raw result:")
+        st.write(result)
