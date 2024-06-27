@@ -1,9 +1,9 @@
 variables:
-  service_connection: 'dssandbox-spn'
-  resource_group: 'PTAZSG-DEV-DSP-RG'
-  app_name: 'ptsg-5dspwb04'
-  slot_name: 'dstats3'
-  group: resume_parser_hr_env_1
+  service_connection: # service connection here
+  resource_group: # resource group here
+  app_name: # app name here
+  slot_name: # slot name here
+  group: # group here
 
 pool:
   vmImage: ubuntu-latest
