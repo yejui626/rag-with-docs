@@ -8,11 +8,6 @@ from chat import Chat
 from utils import pdf_loader,on_files_uploaded
 
 
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_PROJECT"] = f"rag-with-docs"
-os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
-os.environ["LANGCHAIN_API_KEY"] = st.secrets['LANGCHAIN_API_KEY']
-
 st.title("title bar : Chat with docs")
 st.info("Info bar", icon="📃")
 embedding_function = AzureOpenAIEmbeddings(
